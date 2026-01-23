@@ -146,4 +146,125 @@
                 btn.classList.remove('selected');
             } else {
                 siblings.forEach(b => b.classList.remove('selected'));
-                state
+                state[category] = value;
+                btn.classList.add('selected');
+            }
+        }
+
+        // --- SAVE LOGIC ---
+        async function save() {
+            if(!state.mood) return alert("Pick a mood!");
+            
+            // Date locked to Eastern Time
+            const dateStr = new Date().toLocaleDateString('en-CA', {
+                timeZone: 'America/New_York'
+            }); 
+            
+            const data = {
+                date: dateStr,
+                mood: state.mood,
+                cycle: state.cycle || "None",
+                moon: state.moon || "None"
+            };
+
+            const btn = document.getElementById('save-btn');
+            btn.innerText = "Saving...";
+            
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(data)
+                });
+                
+                btn.innerText = "Save";
+                show('year-screen');
+
+            } catch (err) {
+                alert("Error saving: " + err);
+                btn.innerText = "Save";
+            }
+        }
+
+        // --- YEAR VIEW LOGIC ---
+        function changeYear(dir) {
+            currentYearView += dir;
+            renderYear();
+        }
+
+        function show(id) {
+            document.getElementById('input-screen').style.display = id === 'input-screen' ? 'flex' : 'none';
+            document.getElementById('year-screen').style.display = id === 'year-screen' ? 'block' : 'none';
+            if(id === 'year-screen') renderYear();
+        }
+
+        async function renderYear() {
+            document.getElementById('year-label').innerText = currentYearView;
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "Fetching...";
+            
+            try {
+                const res = await fetch(WEB_APP_URL, { redirect: 'follow' });
+                const history = await res.json();
+                grid.innerHTML = "";
+
+                // Get "Today" in YYYY-MM-DD (Eastern)
+                const todayStr = new Date().toLocaleDateString('en-CA', {
+                    timeZone: 'America/New_York'
+                });
+
+                // ALIGNMENT: 
+                // JS getDay(): 0=Sun, 1=Mon... We want Mon=0...Sun=6
+                let firstDay = new Date(currentYearView, 0, 1).getDay();
+                let spacerCount = (firstDay + 6) % 7; 
+
+                for(let i=0; i<spacerCount; i++) {
+                    let spacer = document.createElement('div');
+                    grid.appendChild(spacer);
+                }
+
+                // LOOP DAYS
+                for (let m = 0; m < 12; m++) {
+                    let daysInMonth = new Date(currentYearView, m + 1, 0).getDate();
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${currentYearView}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                        
+                        const entry = history.find(e => {
+                            let sheetDate = e.date || "";
+                            if(sheetDate.includes("T")) sheetDate = sheetDate.split("T")[0];
+                            return sheetDate === dateStr;
+                        });
+                        
+                        const el = document.createElement('div');
+                        el.className = 'day-box';
+                        
+                        // LOGIC: Data vs Past vs Future
+                        if (entry && entry.mood !== "None") {
+                            // 1. DATA EXISTS
+                            el.innerText = entry.mood;
+                            if (d === 1) el.classList.add('month-start');
+                            if (entry.cycle === 'menstruation') el.classList.add('frame-mens');
+                            if (entry.cycle === 'ovulation') el.classList.add('frame-ovul');
+                            if (entry.moon === 'full') el.innerHTML += '<span class="moon-dot">●</span>';
+                            if (entry.moon === 'new') el.innerHTML += '<span class="moon-dot">○</span>';
+                            el.onclick = () => alert(dateStr + "\n" + entry.mood);
+                        } else {
+                            // 2. NO DATA
+                            // Check if this day is in the past (dateStr < todayStr)
+                            if (dateStr < todayStr) {
+                                el.classList.add('empty-past');
+                            }
+                            // Always add Month Start border even if empty
+                            if (d === 1) el.classList.add('month-start');
+                        }
+                        
+                        grid.appendChild(el);
+                    }
+                }
+            } catch (e) {
+                grid.innerHTML = "Error loading.";
+            }
+        }
+    </script>
+</body>
+</html>
