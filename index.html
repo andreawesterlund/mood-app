@@ -1,83 +1,214 @@
-<div class="options">
-    <label>CYCLE? &nbsp; 
-        <input type="radio" name="cycle" value="ovulation"> OVUL
-        <input type="radio" name="cycle" value="menstruation"> MENS
-        <button onclick="clearRadio('cycle')" style="font-size:0.7rem; margin-left:10px; border:none; background:#ddd; border-radius:5px;">clear</button>
-    </label>
-    <label>MOON? &nbsp; 
-        <input type="radio" name="moon" value="full"> FULL
-        <input type="radio" name="moon" value="new"> NEW
-        <button onclick="clearRadio('moon')" style="font-size:0.7rem; margin-left:10px; border:none; background:#ddd; border-radius:5px;">clear</button>
-    </label>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mood Tracker</title>
+    <style>
+        :root { --bg: #fdf5e6; --red: #ff4d4d; --green: #4caf50; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; overflow: hidden; height: 100vh; }
+        
+        /* Input Screen */
+        #input-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+        .emoji-btn { font-size: 3rem; background: none; border: none; transition: opacity 0.3s; padding: 5px; cursor: pointer; }
+        .emoji-btn.dim { opacity: 0.2; }
+        
+        /* Options */
+        .options { text-align: left; width: 240px; margin: 20px auto; line-height: 2.2; }
+        .options label { display: flex; align-items: center; font-weight: bold; font-size: 0.9rem; justify-content: space-between; }
+        .opt-group { display: flex; gap: 10px; }
+        
+        /* Custom Radio Buttons */
+        .radio-btn {
+            border: 2px solid #000; padding: 5px 10px; border-radius: 15px; font-size: 0.8rem; background: transparent; cursor: pointer;
+        }
+        .radio-btn.selected { background: #000; color: #fff; }
 
-<script>
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwIP_WxRUY_MeswIM2c1RJWvCqpIq3_9IWkd_vQGUwWoLO7mVFx7U1xsV9NN7eEUQRatA/exec";
-    let chosenMood = "";
+        /* Year View */
+        #year-screen { display: none; height: 100%; overflow-y: auto; padding-top: 20px; }
+        .year-header { font-size: 1.2rem; text-align: center; margin-bottom: 20px; color: #ccc; }
+        .active-year { color: black; font-weight: bold; margin: 0 10px; font-size: 1.5rem; }
+        .calendar-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; max-width: 350px; margin: 0 auto; padding-bottom: 100px; }
+        
+        .day-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; position: relative; border: 2px solid transparent; }
+        .month-start { border-left: 3px solid black !important; }
+        .frame-menstruation { border: 2px solid var(--red); border-radius: 4px; }
+        .frame-ovulation { border: 2px solid var(--green); border-radius: 4px; }
+        .moon-icon { position: absolute; top: -8px; right: -2px; font-size: 0.7rem; }
 
-    function clearRadio(name) {
-        document.querySelectorAll(`input[name="${name}"]`).forEach(rb => rb.checked = false);
-    }
+        /* Nav */
+        .nav-icon { position: fixed; bottom: 30px; font-size: 2rem; cursor: pointer; z-index: 100; }
+        #to-year { right: 30px; }
+        #to-input { left: 30px; }
+    </style>
+</head>
+<body>
 
-    function sel(m, btn) {
-        chosenMood = m;
-        document.querySelectorAll('.emoji-btn').forEach(b => b.classList.add('dim'));
-        btn.classList.remove('dim');
-    }
+    <div id="input-screen">
+        <h3 style="letter-spacing: 1px;">HOW'S TODAY?</h3>
+        
+        <div class="emoji-grid">
+            <button class="emoji-btn" onclick="toggleEmoji('🥰', this)">🥰</button>
+            <button class="emoji-btn" onclick="toggleEmoji('🤬', this)">🤬</button>
+            <button class="emoji-btn" onclick="toggleEmoji('😩', this)">😩</button>
+            <button class="emoji-btn" onclick="toggleEmoji('😵‍💫', this)">😵‍💫</button>
+            <button class="emoji-btn" onclick="toggleEmoji('😴', this)">😴</button>
+            <button class="emoji-btn" onclick="toggleEmoji('🤗', this)">🤗</button>
+            <button class="emoji-btn" onclick="toggleEmoji('🥳', this)">🥳</button>
+            <button class="emoji-btn" onclick="toggleEmoji('😌', this)">😌</button>
+        </div>
 
-    async function save() {
-        if(!chosenMood) return alert("Select a mood!");
-        const data = {
-            date: new Date().toLocaleDateString('en-CA'),
-            mood: chosenMood,
-            cycle: document.querySelector('input[name="cycle"]:checked')?.value || "None",
-            moon: document.querySelector('input[name="moon"]:checked')?.value || "None"
-        };
-        document.getElementById('save-btn').innerText = "Saving...";
-        // 'no-cors' is used for the POST to avoid preflight errors
-        await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(data), mode: 'no-cors' });
-        alert("Saved!");
-        location.reload();
-    }
+        <div class="options">
+            <label>CYCLE 
+                <div class="opt-group">
+                    <button class="radio-btn" onclick="toggleOption('cycle', 'ovulation', this)">OVUL</button>
+                    <button class="radio-btn" onclick="toggleOption('cycle', 'menstruation', this)">MENS</button>
+                </div>
+            </label>
+            <label>MOON 
+                <div class="opt-group">
+                    <button class="radio-btn" onclick="toggleOption('moon', 'full', this)">FULL</button>
+                    <button class="radio-btn" onclick="toggleOption('moon', 'new', this)">NEW</button>
+                </div>
+            </label>
+        </div>
 
-    async function renderYear() {
-        const grid = document.getElementById('grid');
-        grid.innerHTML = "Loading...";
-        try {
-            // Fetching with redirect: 'follow' is key for Google Apps Script
-            const res = await fetch(WEB_APP_URL, { redirect: 'follow' });
-            const history = await res.json();
-            grid.innerHTML = "";
+        <button onclick="save()" id="save-btn" style="background:none; border: 1px solid black; padding: 10px 40px; border-radius: 20px; margin-top: 10px; font-size: 1rem;">Save Day</button>
+        <div id="to-year" class="nav-icon" onclick="show('year-screen')">🗓️</div>
+    </div>
 
-            const year = 2026; 
-            for (let m = 0; m < 12; m++) {
-                let daysInMonth = new Date(year, m + 1, 0).getDate();
-                for (let d = 1; d <= daysInMonth; d++) {
-                    const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-                    // We match the date string exactly
-                    const entry = history.find(e => e.date === dateStr);
-                    
-                    const el = document.createElement('div');
-                    el.className = 'day-box';
-                    if (d === 1) el.classList.add('month-start');
-                    
-                    if (entry) {
-                        el.innerText = entry.mood !== "None" ? entry.mood : "";
-                        if (entry.cycle === 'menstruation') el.classList.add('frame-menstruation');
-                        if (entry.cycle === 'ovulation') el.classList.add('frame-ovulation');
-                        if (entry.moon === 'full') el.innerHTML += '<span class="moon-icon">●</span>';
-                        if (entry.moon === 'new') el.innerHTML += '<span class="moon-icon">○</span>';
-                        el.onclick = () => alert(`${new Date(dateStr).toDateString()}`);
-                    }
-                    grid.appendChild(el);
-                }
+    <div id="year-screen">
+        <div class="year-header">
+            <span onclick="changeYear(-1)">Wait..</span> 
+            <span class="active-year" id="display-year">2026</span> 
+            <span onclick="changeYear(1)">Next..</span>
+        </div>
+        <div class="calendar-grid" id="grid">Loading...</div>
+        <div id="to-input" class="nav-icon" onclick="show('input-screen')">😊</div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxgugx0E5F-VaNVJF0UBefV8_yGOKgPAwqP_-YJj3MicJG-CMJGk2uTMsBqX3g7gWSbsg/exec"; 
+        
+        // --- STATE ---
+        let state = { mood: "", cycle: "", moon: "" };
+        let currentYearView = new Date().getFullYear();
+
+        // --- INPUT LOGIC ---
+        function toggleEmoji(emoji, btn) {
+            if (state.mood === emoji) {
+                state.mood = ""; // Unselect
+                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('dim'));
+            } else {
+                state.mood = emoji; // Select
+                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.add('dim'));
+                btn.classList.remove('dim');
             }
-        } catch (e) { grid.innerHTML = "Error loading history."; }
-    }
+        }
 
-    function show(id) {
-        document.getElementById('input-screen').style.display = id === 'input-screen' ? 'flex' : 'none';
-        document.getElementById('year-screen').style.display = id === 'year-screen' ? 'block' : 'none';
-        if(id === 'year-screen') renderYear();
-    }
-</script>
+        function toggleOption(category, value, btn) {
+            // If clicking the already selected one, clear it
+            if (state[category] === value) {
+                state[category] = "";
+                btn.classList.remove('selected');
+            } else {
+                // Clear others in group
+                const group = btn.parentElement.querySelectorAll('.radio-btn');
+                group.forEach(b => b.classList.remove('selected'));
+                // Select new
+                state[category] = value;
+                btn.classList.add('selected');
+            }
+        }
+
+        async function save() {
+            if(!state.mood) return alert("Please select a mood first!");
+
+            const payload = {
+                date: new Date().toLocaleDateString('en-CA'), // "2026-01-23"
+                mood: state.mood,
+                cycle: state.cycle || "None",
+                moon: state.moon || "None"
+            };
+
+            // DEBUG: This alert proves the phone is correct. 
+            // If this shows the emoji, but sheet is blank, the Script is the problem.
+            alert("DEBUG: Sending to Sheet...\n" + JSON.stringify(payload));
+            
+            document.getElementById('save-btn').innerText = "Saving...";
+            
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('save-btn').innerText = "Saved!";
+                setTimeout(() => location.reload(), 1000);
+            } catch (err) {
+                alert("Error: " + err);
+            }
+        }
+
+        // --- YEAR VIEW LOGIC ---
+        function changeYear(delta) {
+            currentYearView += delta;
+            renderYear();
+        }
+
+        async function renderYear() {
+            document.getElementById('display-year').innerText = currentYearView;
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "Fetching data...";
+
+            try {
+                // Fetch data from Google Sheet
+                const res = await fetch(WEB_APP_URL, { redirect: 'follow' });
+                const history = await res.json();
+                
+                grid.innerHTML = ""; // Clear loader
+
+                for (let m = 0; m < 12; m++) {
+                    let daysInMonth = new Date(currentYearView, m + 1, 0).getDate();
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${currentYearView}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                        
+                        // Robust Date Matching
+                        const entry = history.find(e => {
+                            // Convert sheet date to string just in case
+                            let sheetDate = e.date; 
+                            if(sheetDate.includes("T")) sheetDate = sheetDate.split("T")[0]; // Handle 2026-01-23T00:00...
+                            return sheetDate === dateStr;
+                        });
+                        
+                        const el = document.createElement('div');
+                        el.className = 'day-box';
+                        if (d === 1) el.classList.add('month-start');
+                        
+                        if (entry && entry.mood !== "None") {
+                            el.innerText = entry.mood;
+                            if (entry.cycle === 'menstruation') el.classList.add('frame-menstruation');
+                            if (entry.cycle === 'ovulation') el.classList.add('frame-ovulation');
+                            if (entry.moon === 'full') el.innerHTML += '<span class="moon-icon">●</span>';
+                            if (entry.moon === 'new') el.innerHTML += '<span class="moon-icon">○</span>';
+                            el.onclick = () => alert(dateStr + "\nMood: " + entry.mood);
+                        }
+                        grid.appendChild(el);
+                    }
+                }
+            } catch (e) {
+                grid.innerHTML = "Error loading. <br><br>1. Check Web App URL.<br>2. Check 'Who has access' is 'Anyone'.";
+                console.error(e);
+            }
+        }
+
+        function show(id) {
+            document.getElementById('input-screen').style.display = id === 'input-screen' ? 'flex' : 'none';
+            document.getElementById('year-screen').style.display = id === 'year-screen' ? 'block' : 'none';
+            if(id === 'year-screen') renderYear();
+        }
+    </script>
+</body>
+</html>
