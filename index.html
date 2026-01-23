@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mood Tracker</title>
+    <style>
+        :root { --bg: #fdf5e6; --red: #ff4d4d; --green: #4caf50; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; overflow: hidden; height: 100vh; }
+        
+        /* Input Screen */
+        #input-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+        .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
+        .emoji-btn { font-size: 3rem; background: none; border: none; transition: opacity 0.3s; padding: 5px; }
+        .emoji-btn.dim { opacity: 0.2; }
+        .options { text-align: left; width: 220px; margin: 20px auto; line-height: 2; }
+        .options label { display: flex; align-items: center; font-weight: bold; font-size: 0.9rem; }
+        input[type="radio"] { margin-right: 10px; transform: scale(1.2); }
+
+        /* Year View */
+        #year-screen { display: none; height: 100%; overflow-y: auto; padding-top: 20px; }
+        .year-header { font-size: 1.2rem; text-align: center; margin-bottom: 20px; color: #ccc; }
+        .active-year { color: black; font-weight: bold; margin: 0 10px; font-size: 1.5rem; }
+        .calendar-grid { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-start; max-width: 350px; margin: 0 auto; }
+        
+        /* Day Boxes */
+        .day-box { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; position: relative; border: 2px solid transparent; }
+        .month-start { border-left: 3px solid black !important; }
+        .frame-menstruation { border: 2px solid var(--red); border-radius: 4px; }
+        .frame-ovulation { border: 2px solid var(--green); border-radius: 4px; }
+        .moon-icon { position: absolute; top: -8px; right: -2px; font-size: 0.7rem; }
+
+        /* Bottom Nav */
+        .nav-icon { position: fixed; bottom: 30px; font-size: 2rem; cursor: pointer; }
+        #to-year { right: 30px; }
+        #to-input { left: 30px; }
+    </style>
+</head>
+<body>
+
+    <div id="input-screen">
+        <h3 style="letter-spacing: 1px;">HOW'S TODAY?</h3>
+        <div class="emoji-grid" id="emoji-selectors">
+            <button class="emoji-btn" onclick="sel('🥰', this)">🥰</button>
+            <button class="emoji-btn" onclick="sel('🤬', this)">🤬</button>
+            <button class="emoji-btn" onclick="sel('😩', this)">😩</button>
+            <button class="emoji-btn" onclick="sel('😵‍💫', this)">😵‍💫</button>
+            <button class="emoji-btn" onclick="sel('😴', this)">😴</button>
+            <button class="emoji-btn" onclick="sel('🤗', this)">🤗</button>
+            <button class="emoji-btn" onclick="sel('🥳', this)">🥳</button>
+            <button class="emoji-btn" onclick="sel('😌', this)">😌</button>
+        </div>
+        <div class="options">
+            <label>CYCLE? &nbsp; <input type="radio" name="cycle" value="ovulation"> OVULATION</label>
+            <label style="margin-left:55px"><input type="radio" name="cycle" value="menstruation"> MENSTRUATION</label>
+            <label>MOON? &nbsp; <input type="radio" name="moon" value="full"> FULL</label>
+            <label style="margin-left:55px"><input type="radio" name="moon" value="new"> NEW</label>
+        </div>
+        <button onclick="save()" id="save-btn" style="background:none; border: 1px solid black; padding: 10px 30px; border-radius: 20px; margin-top: 10px;">Save</button>
+        <div id="to-year" class="nav-icon" onclick="show('year-screen')">🗓️</div>
+    </div>
+
+    <div id="year-screen">
+        <div class="year-header">2024 <span class="active-year">2025</span> 2026</div>
+        <div class="calendar-grid" id="grid"></div>
+        <div id="to-input" class="nav-icon" onclick="show('input-screen')">😊</div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbypcHGwM5iFzQ_OLdwFODmb5b5KazB4R6GmFG3leVuUBlGxbpALk5jpYpPVFzD0WwilDQ/exec";
+        let chosenMood = "";
+
+        function sel(m, btn) {
+            chosenMood = m;
+            document.querySelectorAll('.emoji-btn').forEach(b => b.classList.add('dim'));
+            btn.classList.remove('dim');
+        }
+
+        async function save() {
+            if(!chosenMood) return alert("Select a mood!");
+            const data = {
+                date: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD
+                mood: chosenMood,
+                cycle: document.querySelector('input[name="cycle"]:checked')?.value || "",
+                moon: document.querySelector('input[name="moon"]:checked')?.value || ""
+            };
+            document.getElementById('save-btn').innerText = "Saving...";
+            await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(data), mode: 'no-cors' });
+            alert("Saved to Google Sheets!");
+            location.reload();
+        }
+
+        function show(id) {
+            document.getElementById('input-screen').style.display = id === 'input-screen' ? 'flex' : 'none';
+            document.getElementById('year-screen').style.display = id === 'year-screen' ? 'block' : 'none';
+            if(id === 'year-screen') renderYear();
+        }
+
+        async function renderYear() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "Loading...";
+            const res = await fetch(WEB_APP_URL);
+            const history = await res.json();
+            grid.innerHTML = "";
+
+            const year = 2025;
+            for (let m = 0; m < 12; m++) {
+                let daysInMonth = new Date(year, m + 1, 0).getDate();
+                for (let d = 1; d <= daysInMonth; d++) {
+                    const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const entry = history.find(e => e.date.includes(dateStr));
+                    
+                    const el = document.createElement('div');
+                    el.className = 'day-box';
+                    if (d === 1) el.classList.add('month-start');
+                    if (entry) {
+                        el.innerText = entry.mood;
+                        if (entry.cycle === 'menstruation') el.classList.add('frame-menstruation');
+                        if (entry.cycle === 'ovulation') el.classList.add('frame-ovulation');
+                        if (entry.moon === 'full') el.innerHTML += '<span class="moon-icon">●</span>';
+                        if (entry.moon === 'new') el.innerHTML += '<span class="moon-icon">○</span>';
+                        el.onclick = () => alert(`${new Date(dateStr).toDateString()}`);
+                    }
+                    grid.appendChild(el);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
