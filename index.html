@@ -19,15 +19,15 @@
         .emoji-btn.dim { opacity: 0.2; }
 
         /* TOGGLE BUTTONS */
-        .options-container { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; width: 100%; max-width: 320px; }
+        .options-container { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; width: 100%; max-width: 340px; }
         .row { display: flex; align-items: center; justify-content: space-between; }
-        .label { font-weight: bold; font-size: 1rem; }
+        .label { font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
         .btn-group { display: flex; gap: 8px; }
         
         .toggle-btn {
             background: transparent; border: 2px solid #000; 
-            border-radius: 20px; padding: 8px 14px; 
-            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            border-radius: 20px; padding: 8px 12px; 
+            font-size: 0.75rem; font-weight: 600; cursor: pointer;
         }
         .toggle-btn.selected { background: var(--sel); color: #fff; }
 
@@ -40,8 +40,10 @@
         #to-input { left: 30px; }
 
         /* CALENDAR */
-        .calendar-grid { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; max-width: 360px; margin: 0 auto; }
+        .calendar-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; max-width: 360px; margin: 0 auto; }
         .day-box { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; position: relative; border: 2px solid transparent; }
+        
+        /* Only apply these if data exists */
         .month-start { border-left: 3px solid black !important; }
         .frame-mens { border: 2px solid var(--red); border-radius: 6px; }
         .frame-ovul { border: 2px solid var(--green); border-radius: 6px; }
@@ -68,21 +70,21 @@
             <div class="row">
                 <span class="label">CYCLE</span>
                 <div class="btn-group">
-                    <button class="toggle-btn" onclick="toggle(this, 'cycle', 'ovulation')">OVUL</button>
-                    <button class="toggle-btn" onclick="toggle(this, 'cycle', 'menstruation')">MENS</button>
+                    <button class="toggle-btn" onclick="toggle(this, 'cycle', 'ovulation')">OVULATION</button>
+                    <button class="toggle-btn" onclick="toggle(this, 'cycle', 'menstruation')">MENSTRUATION</button>
                 </div>
             </div>
             
             <div class="row">
                 <span class="label">MOON</span>
                 <div class="btn-group">
-                    <button class="toggle-btn" onclick="toggle(this, 'moon', 'full')">FULL</button>
-                    <button class="toggle-btn" onclick="toggle(this, 'moon', 'new')">NEW</button>
+                    <button class="toggle-btn" onclick="toggle(this, 'moon', 'full')">FULL MOON</button>
+                    <button class="toggle-btn" onclick="toggle(this, 'moon', 'new')">NEW MOON</button>
                 </div>
             </div>
         </div>
 
-        <button onclick="save()" id="save-btn" class="save-btn">Save Day</button>
+        <button onclick="save()" id="save-btn" class="save-btn">Save</button>
         <div id="to-year" class="nav-icon" onclick="show('year-screen')">🗓️</div>
     </div>
 
@@ -96,7 +98,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwVmNhCEY5C4Cgp1DtljacwwI3kXHZTk-FCvSYcQwpGMlYUxqpyltTOGQWSnAhHWUgRwA/exec"; 
+        const WEB_APP_URL = "PASTE_YOUR_NEW_WEB_APP_URL_HERE"; 
         
         let state = { mood: "", cycle: "", moon: "" };
 
@@ -128,21 +130,37 @@
         // --- SAVE LOGIC ---
         async function save() {
             if(!state.mood) return alert("Pick a mood!");
+            
+            // Generate Date strictly for Eastern Time (New York)
+            const dateStr = new Date().toLocaleDateString('en-CA', {
+                timeZone: 'America/New_York'
+            }); // Returns "2026-01-23" based on EST
+            
             const data = {
-                date: new Date().toLocaleDateString('en-CA'),
+                date: dateStr,
                 mood: state.mood,
                 cycle: state.cycle || "None",
                 moon: state.moon || "None"
             };
-            document.getElementById('save-btn').innerText = "Saving...";
+
+            const btn = document.getElementById('save-btn');
+            btn.innerText = "Saving...";
             
-            await fetch(WEB_APP_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                body: JSON.stringify(data)
-            });
-            alert("Saved!");
-            location.reload(); 
+            try {
+                await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify(data)
+                });
+                
+                // Refresh data and jump to year view
+                btn.innerText = "Save";
+                show('year-screen');
+
+            } catch (err) {
+                alert("Error saving: " + err);
+                btn.innerText = "Save";
+            }
         }
 
         // --- VIEW LOGIC ---
@@ -154,7 +172,7 @@
 
         async function renderYear() {
             const grid = document.getElementById('grid');
-            grid.innerHTML = "Loading...";
+            grid.innerHTML = "Fetching latest data...";
             
             try {
                 const res = await fetch(WEB_APP_URL, { redirect: 'follow' });
@@ -167,7 +185,7 @@
                     for (let d = 1; d <= daysInMonth; d++) {
                         const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
                         
-                        // Robust Date Matching
+                        // Check if we have data for this day
                         const entry = history.find(e => {
                             let sheetDate = e.date || "";
                             if(sheetDate.includes("T")) sheetDate = sheetDate.split("T")[0];
@@ -176,16 +194,24 @@
                         
                         const el = document.createElement('div');
                         el.className = 'day-box';
-                        if (d === 1) el.classList.add('month-start');
                         
+                        // ONLY RENDER VISUALS IF DATA EXISTS
                         if (entry && entry.mood !== "None") {
                             el.innerText = entry.mood;
+                            
+                            // Only show month start bar if data exists
+                            if (d === 1) el.classList.add('month-start');
+                            
                             if (entry.cycle === 'menstruation') el.classList.add('frame-mens');
                             if (entry.cycle === 'ovulation') el.classList.add('frame-ovul');
                             if (entry.moon === 'full') el.innerHTML += '<span class="moon-dot">●</span>';
                             if (entry.moon === 'new') el.innerHTML += '<span class="moon-dot">○</span>';
+                            
                             el.onclick = () => alert(dateStr + "\n" + entry.mood);
+                        } else {
+                            // Empty days are just transparent placeholders
                         }
+                        
                         grid.appendChild(el);
                     }
                 }
