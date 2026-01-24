@@ -49,7 +49,7 @@
             aspect-ratio: 1 / 1; 
             display: flex; align-items: center; justify-content: center; 
             font-size: 1.5rem; position: relative; border: 2px solid transparent; 
-            border-radius: 4px; /* Slight rounding for the gray boxes */
+            border-radius: 4px; 
         }
         
         /* VISUAL STATES */
@@ -58,7 +58,7 @@
         .frame-ovul { border: 2px solid var(--green); border-radius: 6px; }
         .moon-dot { position: absolute; top: 2px; right: 2px; font-size: 0.6rem; color: #555; }
         
-        /* The New "Empty Past" Box */
+        /* Empty Past Box */
         .empty-past { border: 2px solid var(--gray); }
 
         /* YEAR CONTROLS */
@@ -155,7 +155,7 @@
         async function save() {
             if(!state.mood) return alert("Pick a mood!");
             
-            // Date locked to Eastern Time
+            // Eastern Time Date
             const dateStr = new Date().toLocaleDateString('en-CA', {
                 timeZone: 'America/New_York'
             }); 
@@ -208,13 +208,12 @@
                 const history = await res.json();
                 grid.innerHTML = "";
 
-                // Get "Today" in YYYY-MM-DD (Eastern)
+                // Today in Eastern Time
                 const todayStr = new Date().toLocaleDateString('en-CA', {
                     timeZone: 'America/New_York'
                 });
 
-                // ALIGNMENT: 
-                // JS getDay(): 0=Sun, 1=Mon... We want Mon=0...Sun=6
+                // Alignment Logic
                 let firstDay = new Date(currentYearView, 0, 1).getDay();
                 let spacerCount = (firstDay + 6) % 7; 
 
@@ -223,7 +222,7 @@
                     grid.appendChild(spacer);
                 }
 
-                // LOOP DAYS
+                // Days Loop
                 for (let m = 0; m < 12; m++) {
                     let daysInMonth = new Date(currentYearView, m + 1, 0).getDate();
                     for (let d = 1; d <= daysInMonth; d++) {
@@ -238,9 +237,8 @@
                         const el = document.createElement('div');
                         el.className = 'day-box';
                         
-                        // LOGIC: Data vs Past vs Future
+                        // LOGIC 1: Visuals for Data
                         if (entry && entry.mood !== "None") {
-                            // 1. DATA EXISTS
                             el.innerText = entry.mood;
                             if (d === 1) el.classList.add('month-start');
                             if (entry.cycle === 'menstruation') el.classList.add('frame-mens');
@@ -249,13 +247,16 @@
                             if (entry.moon === 'new') el.innerHTML += '<span class="moon-dot">○</span>';
                             el.onclick = () => alert(dateStr + "\n" + entry.mood);
                         } else {
-                            // 2. NO DATA
-                            // Check if this day is in the past (dateStr < todayStr)
+                            // LOGIC 2: Visuals for Empty Days
+                            // Only add month-start if it is NOT in the future
+                            if (d === 1 && dateStr <= todayStr) {
+                                el.classList.add('month-start');
+                            }
+                            
+                            // If past, add gray box
                             if (dateStr < todayStr) {
                                 el.classList.add('empty-past');
                             }
-                            // Always add Month Start border even if empty
-                            if (d === 1) el.classList.add('month-start');
                         }
                         
                         grid.appendChild(el);
