@@ -13,10 +13,28 @@
         #input-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; }
         #year-screen { display: none; height: 100%; width: 100%; overflow-y: auto; padding-top: 10px; padding-bottom: 80px; }
 
-        /* EMOJIS */
-        .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin: 20px 0; }
-        .emoji-btn { font-size: 3rem; background: none; border: none; cursor: pointer; transition: opacity 0.2s; padding: 0; }
-        .emoji-btn.dim { opacity: 0.2; }
+        /* THE MAGIC EMOJI BOX */
+        .input-wrapper { margin: 30px 0; text-align: center; }
+        
+        #mood-input {
+            font-size: 5rem;       
+            width: 100px; height: 100px;
+            text-align: center;
+            border: 2px dashed #000; 
+            border-radius: 15px;
+            background: rgba(255,255,255,0.5);
+            outline: none;
+            padding: 0;
+            caret-color: transparent; /* Hides blinking cursor */
+        }
+        
+        /* Solid border when filled */
+        #mood-input:not(:placeholder-shown) {
+            border: 2px solid #000;
+            background: #fff;
+        }
+
+        .helper-text { margin-top: 10px; color: #888; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; }
 
         /* TOGGLE BUTTONS */
         .options-container { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; width: 100%; max-width: 340px; }
@@ -39,29 +57,21 @@
         #to-year { right: 30px; }
         #to-input { left: 30px; }
 
-        /* CALENDAR HEADER */
+        /* CALENDAR STYLES */
         .week-header { display: grid; grid-template-columns: repeat(7, 1fr); max-width: 360px; margin: 0 auto 10px auto; text-align: center; font-weight: bold; color: #888; font-size: 0.9rem; }
-
-        /* CALENDAR GRID */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 360px; margin: 0 auto; }
         
         .day-box { 
-            aspect-ratio: 1 / 1; 
-            display: flex; align-items: center; justify-content: center; 
-            font-size: 1.5rem; position: relative; border: 2px solid transparent; 
-            border-radius: 4px; 
+            aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.5rem; position: relative; border: 2px solid transparent; border-radius: 4px; 
         }
         
-        /* VISUAL STATES */
         .month-start { border-left: 3px solid black !important; border-top-left-radius: 0; border-bottom-left-radius: 0; }
         .frame-mens { border: 2px solid var(--red); border-radius: 6px; }
         .frame-ovul { border: 2px solid var(--green); border-radius: 6px; }
         .moon-dot { position: absolute; top: 2px; right: 2px; font-size: 0.6rem; color: #555; }
-        
-        /* Empty Past Box */
         .empty-past { border: 2px solid var(--gray); }
 
-        /* YEAR CONTROLS */
         .year-controls { display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px; }
         .arrow-btn { font-size: 1.5rem; background: none; border: none; cursor: pointer; padding: 0 10px; }
     </style>
@@ -70,20 +80,10 @@
 
     <div id="input-screen">
         <h3 style="letter-spacing: 1px;">HOW'S TODAY?</h3>
-        <div class="emoji-grid">
-            <button class="emoji-btn" onclick="setMood('🥰', this)">🥰</button>
-            <button class="emoji-btn" onclick="setMood('🤬', this)">🤬</button>
-            <button class="emoji-btn" onclick="setMood('😩', this)">😩</button>
-            <button class="emoji-btn" onclick="setMood('😶', this)">😶</button>
-            <button class="emoji-btn" onclick="setMood('😴', this)">😴</button>
-            <button class="emoji-btn" onclick="setMood('🤗', this)">🤗</button>
-            <button class="emoji-btn" onclick="setMood('🥳', this)">🥳</button>
-            <button class="emoji-btn" onclick="setMood('😌', this)">😌</button>
-            
-            <button class="emoji-btn" onclick="setMood('🤒', this)">🤒</button>
-            <button class="emoji-btn" onclick="setMood('😢', this)">😢</button>
-            <button class="emoji-btn" onclick="setMood('🤔', this)">🤔</button>
-            <button class="emoji-btn" onclick="setMood('😎', this)">😎</button>
+        
+        <div class="input-wrapper">
+            <input type="text" id="mood-input" placeholder="?" autocomplete="off" />
+            <div class="helper-text">Tap to pick an emoji</div>
         </div>
 
         <div class="options-container">
@@ -113,13 +113,8 @@
             <h2 id="year-label" style="margin:0;">2026</h2>
             <button class="arrow-btn" onclick="changeYear(1)">›</button>
         </div>
-
-        <div class="week-header">
-            <div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div>
-        </div>
-
+        <div class="week-header"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div>
         <div class="calendar-grid" id="grid">Loading...</div>
-        
         <div id="to-input" class="nav-icon" onclick="show('input-screen')">😊</div>
     </div>
 
@@ -130,19 +125,27 @@
         let state = { mood: "", cycle: "", moon: "" };
         let currentYearView = new Date().getFullYear();
 
-        // --- MOOD LOGIC ---
-        function setMood(m, btn) {
-            if (state.mood === m) {
-                state.mood = ""; 
-                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.remove('dim'));
-            } else {
-                state.mood = m;
-                document.querySelectorAll('.emoji-btn').forEach(b => b.classList.add('dim'));
-                btn.classList.remove('dim');
-            }
-        }
+        // --- 1. EMOJI ENFORCER LOGIC ---
+        window.onload = function() {
+            const input = document.getElementById('mood-input');
+            input.addEventListener('input', function(e) {
+                const val = input.value;
+                // Regex: Matches only modern emojis
+                const match = val.match(/\p{Extended_Pictographic}/u);
 
-        // --- TOGGLE LOGIC ---
+                if (match) {
+                    // Found an emoji? Keep ONLY that emoji.
+                    input.value = match[0];
+                    state.mood = match[0];
+                } else {
+                    // Typed text? Delete it immediately.
+                    input.value = "";
+                    state.mood = "";
+                }
+            });
+        };
+
+        // --- 2. TOGGLE LOGIC ---
         function toggle(btn, category, value) {
             const siblings = btn.parentElement.querySelectorAll('.toggle-btn');
             if (state[category] === value) {
@@ -155,14 +158,12 @@
             }
         }
 
-        // --- SAVE LOGIC ---
+        // --- 3. SAVE LOGIC ---
         async function save() {
-            if(!state.mood) return alert("Pick a mood!");
+            if(!state.mood) return alert("Please pick an emoji!");
             
             // Eastern Time Date
-            const dateStr = new Date().toLocaleDateString('en-CA', {
-                timeZone: 'America/New_York'
-            }); 
+            const dateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); 
             
             const data = {
                 date: dateStr,
@@ -180,22 +181,19 @@
                     mode: 'no-cors',
                     body: JSON.stringify(data)
                 });
-                
                 btn.innerText = "Save";
                 show('year-screen');
-
+                // Clear input after save
+                document.getElementById('mood-input').value = "";
+                state.mood = "";
             } catch (err) {
                 alert("Error saving: " + err);
                 btn.innerText = "Save";
             }
         }
 
-        // --- YEAR VIEW LOGIC ---
-        function changeYear(dir) {
-            currentYearView += dir;
-            renderYear();
-        }
-
+        // --- 4. YEAR VIEW LOGIC ---
+        function changeYear(dir) { currentYearView += dir; renderYear(); }
         function show(id) {
             document.getElementById('input-screen').style.display = id === 'input-screen' ? 'flex' : 'none';
             document.getElementById('year-screen').style.display = id === 'year-screen' ? 'block' : 'none';
@@ -212,21 +210,14 @@
                 const history = await res.json();
                 grid.innerHTML = "";
 
-                // Today in Eastern Time
-                const todayStr = new Date().toLocaleDateString('en-CA', {
-                    timeZone: 'America/New_York'
-                });
+                const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 
-                // Alignment Logic
+                // Alignment
                 let firstDay = new Date(currentYearView, 0, 1).getDay();
                 let spacerCount = (firstDay + 6) % 7; 
+                for(let i=0; i<spacerCount; i++) grid.appendChild(document.createElement('div'));
 
-                for(let i=0; i<spacerCount; i++) {
-                    let spacer = document.createElement('div');
-                    grid.appendChild(spacer);
-                }
-
-                // Days Loop
+                // Render Days
                 for (let m = 0; m < 12; m++) {
                     let daysInMonth = new Date(currentYearView, m + 1, 0).getDate();
                     for (let d = 1; d <= daysInMonth; d++) {
@@ -241,7 +232,6 @@
                         const el = document.createElement('div');
                         el.className = 'day-box';
                         
-                        // LOGIC 1: Visuals for Data
                         if (entry && entry.mood !== "None") {
                             el.innerText = entry.mood;
                             if (d === 1) el.classList.add('month-start');
@@ -251,24 +241,13 @@
                             if (entry.moon === 'new') el.innerHTML += '<span class="moon-dot">○</span>';
                             el.onclick = () => alert(dateStr + "\n" + entry.mood);
                         } else {
-                            // LOGIC 2: Visuals for Empty Days
-                            // Only add month-start if it is NOT in the future
-                            if (d === 1 && dateStr <= todayStr) {
-                                el.classList.add('month-start');
-                            }
-                            
-                            // If past, add gray box
-                            if (dateStr < todayStr) {
-                                el.classList.add('empty-past');
-                            }
+                            if (d === 1 && dateStr <= todayStr) el.classList.add('month-start');
+                            if (dateStr < todayStr) el.classList.add('empty-past');
                         }
-                        
                         grid.appendChild(el);
                     }
                 }
-            } catch (e) {
-                grid.innerHTML = "Error loading.";
-            }
+            } catch (e) { grid.innerHTML = "Error loading."; }
         }
     </script>
 </body>
